@@ -1,0 +1,136 @@
+curl -XPOST 'http://localhost:9200/movies/movie/1' -d '
+{
+   "title": "Harry Potter and the Deathly Hallows: Part 2",
+   "director": "David Yates",
+   "year": 2011,
+   "genres": ["Adventure", "Fantasy", "Mystery" ]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/2' -d '
+{
+   "title": "Captain America: The First Avenger",
+   "director": "Joe Johnston",
+   "year": 2011,
+   "genres": ["Action", "Adventure", "Sci-Fi" ]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/3' -d '
+{
+   "title": "Thor",
+   "director": "Kenneth Branagh",
+   "year": 2011,
+   "genres": ["Action", "Adventure", "Fantasy" ]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/4' -d '
+{
+   "title": "The Hunger Games",
+   "director": "Gary Ross",
+   "year": 2012,
+   "genres": ["Adventure", "Sci-Fi"]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/5' -d '
+{
+   "title": "The Avengers",
+   "director": "Joss Whedon",
+   "year": 2012,
+   "genres": ["Action", "Adventure", "Sci-Fi"]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/6' -d '
+{
+   "title": "The Dark Knight Rises",
+   "director": "Christopher Nolan",
+   "year": 2012,
+   "genres": ["Adventure", "Thriller"]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/7' -d '
+{
+   "title": "The Wolf of Wall Street",
+   "director": "Martin Scorsese",
+   "year": 2013,
+   "genres": ["Biography", "Comedy", "Crime"]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/8' -d '
+{
+   "title": "The Hunger Games: Catching Fire",
+   "director": "Francis Lawrence",
+   "year": 2013,
+   "genres": ["Adventure", "Sci-Fi"]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/9' -d '
+{
+   "title": "Fast & Furious 6",
+   "director": "Justin Lin",
+   "year": 2013,
+   "genres": [ "Action", "Crime", "Thriller"]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/10' -d '
+{
+   "title": "Interstellar",
+   "director": "Christopher Nolan",
+   "year": 2014,
+   "genres": ["Adventure", "Sci-Fi"]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/11' -d '
+{
+   "title": "Big Hero 6",
+   "director": [ "Don Hall", "Chris Williams" ],
+   "year": 2014,
+   "genres": [ "Animation", "Action", "Adventure"]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/12' -d '
+{
+   "title": "Birdman",
+   "director": "Alejandro Gonzalez Inarritu",
+   "year": 2014,
+   "genres": ["Comedy", "Drama"]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/13' -d '
+{
+   "title": "Avengers: Age of Ultron",
+   "director": "Joss Whedon",
+   "year": 2015,
+   "genres": ["Action", "Adventure", "Fantasy"]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/14' -d '
+{
+   "title": "Furious 7",
+   "director": "Joss Whedon",
+   "year": 2015,
+   "genres": ["Action", "Crime", "Thriller"]
+}'
+
+curl -XPOST 'http://localhost:9200/movies/movie/15' -d '
+{
+   "title": "Fifty Shades of Grey",
+   "director": "Sam Taylor-Johnson",
+   "year": 2015,
+   "genres": [ "Drama", "Romance" ]
+}'
+
+
+
+
+
+
+
+curl -XPOST 'http://localhost:9200/books/computer/978-1-78328-143-5' -d '
+{
+   "isbn": "978-1-78328-143-5",
+   "title": "Mastering ElasticSearch",
+   "author": "Marek Rogozinski",
+   "publisher": "Packt Publishing",
+   "pages": 386,
+   "year": 2013,
+   "theory": "true"
+}'
