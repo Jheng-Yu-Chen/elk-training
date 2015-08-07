@@ -117,20 +117,3 @@ curl -XPOST 'http://localhost:9200/movies/movie/15' -d '
    "year": 2015,
    "genres": [ "Drama", "Romance" ]
 }'
-
-
-
-
-
-
-
-curl -XPOST 'http://localhost:9200/books/computer/978-1-78328-143-5' -d '
-{
-   "isbn": "978-1-78328-143-5",
-   "title": "Mastering ElasticSearch",
-   "author": "Marek Rogozinski",
-   "publisher": "Packt Publishing",
-   "pages": 386,
-   "year": 2013,
-   "theory": "true"
-}'
