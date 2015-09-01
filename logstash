@@ -1,0 +1,253 @@
+#!/bin/sh
+##############################################################################
+# Version: 0.2
+# Update: 2015/09/01
+# Author: Jheng-Yu Chen
+# E-Mail: new.f@livemail.tw
+# Description: Logstash startup script. 
+##############################################################################
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+export PATH
+
+if [ `id -u` -ne 0 ]; then
+	echo "You need root privileges to run this script"
+	exit 1
+fi
+
+name=logstash
+SCRIPTNAME=$name
+LS_USER=logstash
+LS_GROUP=logstash
+LS_HOME=/var/lib/logstash
+LS_HEAP_SIZE="500m"
+LS_LOG_DIR=/var/log/logstash
+LS_LOG_FILE="${LS_LOG_DIR}/$name.log"
+LS_CONF_DIR=/etc/logstash/conf.d
+LS_OPEN_FILES=16384
+LS_NICE=19
+LS_OPTS=""
+
+
+
+
+[ -r /etc/default/$name ] && . /etc/default/$name
+[ -r /etc/sysconfig/$name ] && . /etc/sysconfig/$name
+
+program=/opt/logstash/bin/logstash
+
+
+start() {
+	LS_JAVA_OPTS="${LS_JAVA_OPTS} -Djava.io.tmpdir=${LS_HOME}"
+	HOME=${LS_HOME}
+	export PATH HOME LS_HEAP_SIZE LS_JAVA_OPTS LS_USE_GC_LOGGING
+
+	SGROUPS=$(id -Gn "$LS_USER" | tr " " "," | sed 's/,$//'; echo '')
+
+	if [ ! -z $SGROUPS ]
+	then
+		EXTRA_GROUPS="--groups $SGROUPS"
+	fi
+
+	ulimit -n ${LS_OPEN_FILES}
+
+	if [ ! $1 ]; then
+		CONFIG_FILES=$(ls "$LS_CONF_DIR")
+		for CONFIG_FILE in $CONFIG_FILES
+		do
+			status_code $CONFIG_FILE
+			code=$?
+			if [ $code -eq 0 ]; then
+				echo "$CONFIG_FILE is already running!"
+			else
+				args="agent -f ${LS_CONF_DIR}/${CONFIG_FILE} -l ${LS_LOG_FILE} ${LS_OPTS}"
+				nice -n ${LS_NICE} chroot --userspec $LS_USER:$LS_GROUP $EXTRA_GROUPS / sh -c "
+					cd $LS_HOME
+					ulimit -n ${LS_OPEN_FILES}
+					exec \"$program\" $args
+				" > "${LS_LOG_DIR}/$name.stdout" 2> "${LS_LOG_DIR}/$name.err" &
+	
+				pidfile="/var/run/logstash-${CONFIG_FILE}.pid"
+				echo $! > $pidfile
+				echo "$CONFIG_FILE started."
+			fi
+		done
+		return 0
+	else
+		CONFIG_FILE=$1
+		if [ -f "${LS_CONF_DIR}/${CONFIG_FILE}" ] ; then
+			status_code $CONFIG_FILE
+			code=$?
+			if [ $code -eq 0 ]; then
+				echo "$CONFIG_FILE is already running!"
+			else
+				args="agent -f ${LS_CONF_DIR}/${CONFIG_FILE} -l ${LS_LOG_FILE} ${LS_OPTS}"
+				nice -n ${LS_NICE} chroot --userspec $LS_USER:$LS_GROUP $EXTRA_GROUPS / sh -c "
+					cd $LS_HOME
+					ulimit -n ${LS_OPEN_FILES}
+					exec \"$program\" $args
+				" > "${LS_LOG_DIR}/$name.stdout" 2> "${LS_LOG_DIR}/$name.err" &
+	
+				pidfile="/var/run/logstash-${CONFIG_FILE}.pid"
+				echo $! > $pidfile
+				echo "$CONFIG_FILE started."
+
+			fi
+			return 0
+		else
+			echo "ERROR: \"${LS_CONF_DIR}/${CONFIG_FILE}\" no such file!"
+			return 1
+		fi
+	fi
+}
+
+stop() {
+	if [ ! $1 ]; then
+		CONFIG_FILES=$(ls "$LS_CONF_DIR")
+		for CONFIG_FILE in $CONFIG_FILES
+		do
+			status_code $CONFIG_FILE
+			code=$?
+			if [ $code -eq 0 ]; then
+				PID_FILE="/var/run/logstash-${CONFIG_FILE}.pid"
+				PID=`cat "$PID_FILE"`
+				echo "Killing $CONFIG_FILE (pid $PID) with SIGTERM"
+				kill -TERM $PID
+				for i in 1 2 3 4 5 ; do
+					echo "Waiting $CONFIG_FILE (pid $PID) to die..."
+					status_code $CONFIG_FILE || break
+					sleep 1
+				done
+
+				status_code $CONFIG_FILE
+				code=$?
+				if [ $code -eq 0 ]; then
+					if [ "$KILL_ON_STOP_TIMEOUT" -eq 1 ] ; then
+						echo "Timeout reached. Killing $CONFIG_FILE (pid $PID) with SIGKILL. This may result in data loss."
+						kill -KILL $PID
+						echo "$CONFIG_FILE killed with SIGKILL."
+					else
+						echo "$CONFIG_FILE stop failed; still running."
+					fi
+				else
+					rm -f $PID_FILE
+					echo "$CONFIG_FILE stopped."
+				fi
+			fi
+		done
+	else
+		CONFIG_FILE=$1
+		if [ -f "${LS_CONF_DIR}/${CONFIG_FILE}" ] ; then
+			status_code $CONFIG_FILE
+			code=$?
+			if [ $code -eq 0 ]; then
+				PID_FILE="/var/run/logstash-${CONFIG_FILE}.pid"
+				PID=`cat "$PID_FILE"`
+				echo "Killing $CONFIG_FILE (pid $PID) with SIGTERM"
+				kill -TERM $PID
+				for i in 1 2 3 4 5 ; do
+					echo "Waiting $CONFIG_FILE (pid $PID) to die..."
+					status_code $CONFIG_FILE || break
+					sleep 1
+				done
+
+				status_code $CONFIG_FILE
+				code=$?
+				if [ $code -eq 0 ]; then
+					if [ "$KILL_ON_STOP_TIMEOUT" -eq 1 ] ; then
+						echo "Timeout reached. Killing $CONFIG_FILE (pid $PID) with SIGKILL. This may result in data loss."
+						kill -KILL $PID
+						echo "$CONFIG_FILE killed with SIGKILL."
+					else
+						echo "$CONFIG_FILE stop failed; still running."
+					fi
+				else
+					rm -f $PID_FILE
+					echo "$CONFIG_FILE stopped."
+				fi
+			fi
+
+		else
+			echo "ERROR: \"${LS_CONF_DIR}/${CONFIG_FILE}\" no such file!"
+		fi
+	fi
+}
+
+status() {
+	if [ ! $1 ] ; then
+		CONFIG_FILES=$(ls "$LS_CONF_DIR")
+		for CONFIG_FILE in $CONFIG_FILES
+		do
+			PID_FILE="/var/run/logstash-${CONFIG_FILE}.pid"
+			if [ -f "$PID_FILE" ] ; then
+				PID=`cat "$PID_FILE"`
+				if kill -0 $PID > /dev/null 2> /dev/null ; then
+					echo "$CONFIG_FILE is running."
+				else
+					echo "$CONFIG_FILE is dead but pid file exists."
+				fi
+			else
+				echo "$CONFIG_FILE is not running."
+			fi
+		done
+	else
+		CONFIG_FILE=$1
+		if [ -f "${LS_CONF_DIR}/${CONFIG_FILE}" ] ; then
+			PID_FILE="/var/run/logstash-${CONFIG_FILE}.pid"
+			if [ -f "$PID_FILE" ] ; then
+				PID=`cat "$PID_FILE"`
+				if kill -0 $PID > /dev/null 2> /dev/null ; then
+					echo "$CONFIG_FILE is running."
+				else
+					echo "$CONFIG_FILE is dead but pid file exists."
+				fi
+			else
+				echo "$CONFIG_FILE is not running."
+			fi
+		else
+			echo "ERROR: \"${LS_CONF_DIR}/${CONFIG_FILE}\" no such file!"
+		fi
+	fi
+}
+
+
+status_code() {
+	CONFIG_FILE=$1
+	if [ -f "${LS_CONF_DIR}/${CONFIG_FILE}" ] ; then
+		PID_FILE="/var/run/logstash-${CONFIG_FILE}.pid"
+		if [ -f "$PID_FILE" ] ; then
+			PID=`cat "$PID_FILE"`
+			if kill -0 $PID > /dev/null 2> /dev/null ; then
+				return 0
+			else
+				return 2
+			fi
+		else
+			return 3
+		fi
+	else
+		echo "ERROR: \"${LS_CONF_DIR}/${CONFIG_FILE}\" no such file!"
+	fi
+}
+
+
+case "$1" in
+	start)
+		start $2
+	;;
+	stop) 
+		stop $2
+	;;
+	status)
+		status $2
+	;;
+	restart)
+		stop $2 && start $2
+	;;
+	*)
+		echo "Usage: $SCRIPTNAME {start|stop|status|restart} <config file>" >&2
+		exit 3
+	;;
+esac
+
+exit $?
