@@ -1,0 +1,531 @@
+--------------------------------------
+p21.
+
+Windows cmd.exe : java -version
+
+
+
+--------------------------------------
+p22.
+
+yum install java-1.8.0-openjdk -y
+
+java -version
+
+alternatives --config java
+
+java -version
+
+echo 'export JAVA_HOME=$(readlink -f /usr/bin/java | sed "s:bin/java::")' >> ~/.bashrc
+
+source ~/.bashrc
+
+echo $JAVA_HOME
+
+--------------------------------------
+p23.
+
+cat > /etc/yum.repos.d/elasticsearch.repo <<EOF
+[elasticsearch-1.7]
+name=Elasticsearch repository for 1.7.x packages
+baseurl=http://packages.elastic.co/elasticsearch/1.7/centos
+gpgcheck=1
+gpgkey=http://packages.elastic.co/GPG-KEY-elasticsearch
+enabled=1
+EOF
+
+rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch
+
+yum install elasticsearch -y
+
+
+--------------------------------------
+p25.
+
+systemctl start elasticsearch.service
+
+systemctl enable elasticsearch.service
+
+netstat -tunlp | grep java
+
+
+--------------------------------------
+p30.
+
+curl http://localhost:9200/_cat/nodes?v
+
+
+--------------------------------------
+p31.
+
+curl -XPOST http://localhost:9200/_shutdown
+
+systemctl start elasticsearch.service
+
+--------------------------------------
+p40.
+
+cat > /etc/yum.repos.d/logstash <<EOF
+[logstash-1.5]
+name=Logstash repository for 1.5.x packages
+baseurl=http://packages.elasticsearch.org/logstash/1.5/centos
+gpgcheck=1
+gpgkey=http://packages.elasticsearch.org/GPG-KEY-elasticsearch
+enabled=1
+EOF
+
+rpm --import https://packages.elastic.co/GPG-KEY-elasticsearch
+
+yum install logstash –y
+
+echo 'export PATH=$PATH:/opt/logstash/bin' >> ~/.bashrc
+
+source ~/.bashrc
+
+
+
+--------------------------------------
+p42.
+
+cd /opt/logstash
+
+bin/logstash -e 'input { stdin { } } output { stdout {codec=>rubydebug} }'
+
+
+
+--------------------------------------
+p45.
+
+cat > /etc/logstash/conf.d/first-pipeline.conf << EOF
+input {
+	stdin { }
+}
+filter{ }
+output {
+	stdout { codec => rubydebug }
+}
+EOF
+
+logstash -f /etc/logstash/conf.d/first-pipeline.conf
+
+
+--------------------------------------
+p48.
+
+cd /etc/logstash/conf.d/
+wget https://raw.githubusercontent.com/Jheng-Yu-Chen/elk-training/master/access_log
+
+cat > /etc/logstash/conf.d/first-pipeline.conf << EOF
+input {
+	file {
+		path => ["/etc/logstash/conf.d/access_log" ]
+		codec => plain{ }
+		start_position => "beginning"
+		type => "apache_access_log"
+	}
+}
+filter { }
+output {
+	stdout { codec => rubydebug }
+}
+EOF
+
+logstash -f first-pipeline.conf
+
+
+--------------------------------------
+p50.
+
+sed -i "s/codec => plain{ }/codec => line{ }/g" first-pipeline.conf
+
+logstash -f first-pipeline.conf
+
+
+--------------------------------------
+p51.
+
+ls ~/.sincedb*
+
+
+--------------------------------------
+p52.
+
+rm -f ~/.sincedb*
+
+logstash -f first-pipeline.conf
+
+
+--------------------------------------
+p54.
+
+cat > /etc/logstash/conf.d/first-pipeline.conf << EOF
+input {
+	file {
+		path => ["/etc/logstash/conf.d/access_log" ]
+		codec => plain{ }
+		start_position => "beginning"
+		type => "apache_access_log"
+	}
+}
+filter {
+	grok {
+		match => { "message" => "%{COMBINEDAPACHELOG}"}
+	}
+}
+output { stdout { codec => rubydebug }}
+EOF
+
+rm -f ~/.sincedb*
+
+logstash -f first-pipeline.conf
+
+--------------------------------------
+p57.
+
+cat > /etc/logstash/conf.d/first-pipeline.conf << EOF
+input {
+	file {
+		path => ["/etc/logstash/conf.d/access_log" ]
+		codec => plain{ }
+		start_position => "beginning"
+		type => "apache_access_log"
+	}
+}
+filter {
+	grok {
+		match => { "message" => "%{COMBINEDAPACHELOG}"}
+	}
+}
+output {
+	stdout { codec => rubydebug }
+	elasticsearch {
+		host => "127.0.0.1"
+		index => "access_log-%{+YYYY.MM.dd}"
+		protocol => "http"
+	}
+}
+EOF
+
+
+rm -f ~/.sincedb*
+
+logstash -f first-pipeline.conf
+
+
+
+
+
+--------------------------------------
+p58.
+
+curl -XGET http://localhost:9200/_cat/indices?v
+
+
+--------------------------------------
+p59.
+
+curl -XGET http://localhost:9200/access_log-*/_search?pretty
+
+
+--------------------------------------
+p64.
+
+yum install httpd -y
+
+cd /var/www/html
+
+wget https://download.elastic.co/kibana/kibana/kibana-3.1.3.tar.gz
+
+tar -zxvf kibana-3.1.3.tar.gz
+
+systemctl start httpd
+systemctl enable httpd
+
+
+
+--------------------------------------
+p65.
+
+cat >> /etc/elasticsearch/elasticsearch.yml << EOF
+http.cors.enabled: true
+http.cors.allow-origin: "*"
+EOF
+
+systemctl restart elasticsearch.service
+
+
+
+--------------------------------------
+p76.
+
+cd /opt
+
+wget https://download.elastic.co/kibana/kibana/kibana-4.1.2-linux-x64.tar.gz
+
+tar -zxvf kibana-4.1.2-linux-x64.tar.gz
+
+cd kibana-4.1.2-linux-x64
+
+./bin/kibana &> /dev/null &
+
+
+--------------------------------------
+p88.
+
+cd ~
+
+wget https://download.elastic.co/logstash-forwarder/binaries/logstash-forwarder-0.4.0-1.x86_64.rpm
+
+rpm -ivh logstash-forwarder-0.4.0-1.x86_64.rpm
+
+
+
+--------------------------------------
+p89.
+
+openssl req -x509 -nodes -newkey rsa:2048 \
+-keyout /etc/pki/tls/private/logstash-forwarder.key \
+-out /etc/pki/tls/certs/logstash-forwarder.crt \
+-subj '/CN=elasticsearch_linux/'
+
+
+
+
+--------------------------------------
+p90.
+
+cat > /etc/logstash/conf.d/logstash-forwarder.conf << EOF
+input {
+	lumberjack {
+		port => "5043"
+		ssl_certificate => "/etc/pki/tls/certs/logstash-forwarder.crt"
+		ssl_key => "/etc/pki/tls/private/logstash-forwarder.key"
+		codec => "plain"
+	}
+}
+filter { 
+	grok {
+		match => { "message" => "%{SYSLOGBASE}"}
+	}
+}
+output {
+	elasticsearch {
+		host => "127.0.0.1"
+		index => "syslog-%{+YYYY.MM.dd}"
+		protocol => "http"
+	}
+}
+EOF
+
+logstash -f /etc/logstash/conf.d/logstash-forwarder.conf &> /dev/null &
+
+netstat -tunlp | grep 5043
+
+
+--------------------------------------
+p92.
+
+cat > /etc/logstash-forwarder.conf << EOF
+{
+	"network": {
+	"servers": ["elasticsearch_linux:5043" ],
+	"ssl ca": "/etc/pki/tls/certs/logstash-forwarder.crt",
+	"timeout": 15
+	},
+	"files": [
+		{
+			"paths": ["/var/log/messages"],
+			"fields": {"type": "syslog" }
+		}
+	]
+}
+EOF
+
+/opt/logstash-forwarder/bin/logstash-forwarder -config="/etc/logstash-forwarder.conf"
+
+#sincedb儲存位置在執行目錄下「/root/.logstash-forwarder」。
+#若是用「service logstash start」，
+#則儲存在「/var/lib/logstash-forwarder/.logstash-forwarder」。
+
+
+--------------------------------------
+p98.
+
+「開始」→「所有程式」→「附屬應用程式」→「鼠標移到記事本上按右鍵」→「以系統管理員身份執行」
+
+
+「檔案」→「開啟舊檔」→「C:\Program Files (x86)\nxlog\conf」→「nxlog.conf」→「開啟舊檔」
+
+
+--------------------------------------
+p99.
+
+cat > /etc/logstash/conf.d/windows-nxlog.conf << EOF
+input {
+	tcp {
+		port => "5044"
+		codec => "json"
+		mode => "server"
+	}
+}
+filter { }
+output {
+	elasticsearch {
+		host => "127.0.0.1"
+		index => "windows-%{+YYYY.MM.dd}"
+		protocol => "http"
+	}
+}
+EOF
+
+
+logstash -f /etc/logstash/conf.d/windows-nxlog.conf &> /dev/null &
+
+
+--------------------------------------
+p104.
+
+
+cat > /etc/logstash/conf.d/first-pipeline.conf << EOF
+input {
+	file {
+		path => ["/etc/logstash/conf.d/access_log" ]
+		codec => plain{ }
+		start_position => "beginning"
+		type => "apache_access_log"
+	}
+}
+filter {
+	grok {
+		match => { "message" => "%{COMBINEDAPACHELOG}"}
+	}
+	geoip {
+		source => "clientip"
+		target => "geoip"
+	}
+}
+output {
+	stdout { codec => rubydebug }
+	elasticsearch {
+		host => "127.0.0.1"
+		index => "kibana3-geoip"
+		protocol => "http"
+	}
+}
+EOF
+
+rm -f ~/.sincedb*
+
+logstash -f /etc/logstash/conf.d/first-pipeline.conf
+
+
+
+--------------------------------------
+p109.
+
+curl -XPUT http://localhost:9200/kibana4-geoip
+
+curl -XPUT http://localhost:9200/kibana4-geoip/apache_access_log/_mapping -d'
+{
+	"apache_access_log":{
+		"properties":{
+			"geoip" : {
+				"properties" : {
+					"location" : {"type" : "geo_point"}
+				}
+			}
+		}
+	}
+}'
+
+
+--------------------------------------
+p110.
+
+curl -XGET http://localhost:9200/kibana4-geoip/apache_access_log/_mapping?pretty
+
+
+cat > /etc/logstash/conf.d/first-pipeline.conf << EOF
+input {
+	file {
+		path => ["/etc/logstash/conf.d/access_log" ]
+		codec => plain{ }
+		start_position => "beginning"
+		type => "apache_access_log"
+	}
+}
+filter {
+	grok {
+		match => { "message" => "%{COMBINEDAPACHELOG}"}
+	}
+	geoip {
+		source => "clientip"
+		target => "geoip"
+	}
+}
+output {
+	stdout { codec => rubydebug }
+	elasticsearch {
+		host => "127.0.0.1"
+		index => "kibana4-geoip"
+		protocol => "http"
+	}
+}
+EOF
+
+rm -f ~/.sincedb*
+
+logstash -f /etc/logstash/conf.d/first-pipeline.conf
+
+--------------------------------------
+p114.
+
+wget https://raw.githubusercontent.com/Jheng-Yu-Chen/elk-training/master/log_generator.sh
+
+sh log_generator.sh &
+
+--------------------------------------
+p116.
+
+cat > /etc/logstash/conf.d/grok_test.conf << EOF
+input {
+	file { path => ["/var/log/messages"] }
+}
+filter {
+	grok {
+		match => { "message" => "%{SYSLOGTIMESTAMP:time} elasticsearch_linux root: %{IP:source_ip} -> %{DATA:hostname} url=%{URI:url}" }
+		match => { "message" => "%{SYSLOGTIMESTAMP:time} elasticsearch_linux root: %{IP:source_ip} -> %{DATA:hostname} dialog=%{REEDYDATA:dialog}" }
+	}
+}
+output { stdout { codec => rubydebug } }
+EOF
+
+rm -f ~/.sincedb*
+
+logstash -f /etc/logstash/conf.d/grok_test.conf
+
+
+--------------------------------------
+p117.
+
+cat > /etc/logstash/conf.d/grok_test.conf << EOF
+input {
+	file { path => ["/var/log/messages"] }
+}
+filter {
+	grok {
+		match => { "message" => "%{SYSLOGTIMESTAMP:time} elasticsearch_linux root: %{IP:source_ip} -> %{DATA:hostname} url=%{URI:url}" }
+		match => { "message" => "%{SYSLOGTIMESTAMP:time} elasticsearch_linux root: %{IP:source_ip} -> %{DATA:hostname} dialog=%{REEDYDATA:dialog}" }
+	}
+
+	if "_grokparsefailure" in [tags] {
+		drop { }
+	}
+}
+output { stdout { codec => rubydebug } }
+EOF
+
+rm -f ~/.sincedb*
+
+logstash -f /etc/logstash/conf.d/grok_test.conf
+
